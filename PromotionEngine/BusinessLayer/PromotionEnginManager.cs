@@ -37,12 +37,9 @@ namespace PromotionEngine.BusinessLayer
             decimal resultPrice = 0M;
             foreach (Order ord in ordersData)
             {
-                List<decimal> promoprices = promotionsData
-                    .Select(promo => GetPrice(ord, promo))
-                    .ToList();
-                resultPrice += promoprices.Sum();
+                resultPrice += GetPrice(ord, promotionsData);
             }
-            
+
             return resultPrice;
         }
 
@@ -52,19 +49,50 @@ namespace PromotionEngine.BusinessLayer
         /// <param name="order">The Order</param>
         /// <param name="promotion">The Promotion</param>
         /// <returns>The Final Price</returns>
-        private static decimal GetPrice(Order order, Promotion promotion)
+        private static decimal GetPrice(Order order, List<Promotion> promotions)
         {
             decimal price = 0M;
-            var copp = order.Products
-                .GroupBy(x => x.Id)
-                .Where(grp => promotion.ProductInfo.Any(y => grp.Key == y.Key && grp.Count() >= y.Value))
-                .Select(grp => grp.Count())
-                .Sum();
-            int ppc = promotion.ProductInfo.Sum(kvp => kvp.Value);
-            while (copp >= ppc)
+            var resultGroup = order.Products.GroupBy(n => n.Id)
+                    .ToDictionary(c => c.Key, c => c.Count());
+            Dictionary<string, int> finalItems = new Dictionary<string, int>(resultGroup);
+            var alreadyAppliedProms = new List<int>();
+            foreach (var promotionItem in promotions)
             {
-                price += promotion.PromoPrice;
-                copp -= ppc;
+                var appliedPromotion = promotionItem.ProductInfo.All(x => resultGroup.Select(y => y.Key).Contains(x.Key) && resultGroup.Where(z => z.Key == x.Key).FirstOrDefault().Value >= x.Value);
+                if (appliedPromotion)
+                {
+                    var minCount = resultGroup.Where(x => promotionItem.ProductInfo.Any(y => x.Key == y.Key)).OrderBy(x => x.Value).FirstOrDefault().Value;
+
+
+                    foreach (var item in resultGroup)
+                    {
+                        var totalItems = item.Value;
+                        if (promotionItem.ProductInfo.Where(x => x.Key == item.Key).Count() > 0)
+                        {
+                            var promotionItems = promotionItem.ProductInfo.Where(x => x.Key == item.Key).FirstOrDefault().Value;
+                            if (!alreadyAppliedProms.Contains(promotionItem.PromotionID))
+                            {
+                                alreadyAppliedProms.Add(promotionItem.PromotionID);
+                                while (totalItems >= promotionItems)
+                                {
+                                    price += promotionItem.PromoPrice;
+                                    totalItems -= promotionItems;
+                                    finalItems[item.Key] = totalItems;
+                                }
+                            }
+                            else
+                            {
+                                finalItems[item.Key] = item.Value - minCount;
+                            }
+                        }
+                    }
+                }
+            }
+
+
+            foreach (var item in finalItems)
+            {
+                price += item.Value * order.Products.Where(x => x.Id == item.Key).FirstOrDefault().Price;
             }
 
             return price;

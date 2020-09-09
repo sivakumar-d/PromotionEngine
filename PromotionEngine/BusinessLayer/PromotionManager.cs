@@ -38,7 +38,7 @@ namespace PromotionEngine.BusinessLayer
         /// <returns>Returns list of Promotions</returns>
         public ICollection<Promotion> GetPromotions()
         {
-            return JsonConvert.DeserializeObject<ICollection<Promotion>>(this.documentProvider.JonsFileReader(Constants.ProductsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore });
+            return JsonConvert.DeserializeObject<Promotions>(this.documentProvider.JonsFileReader(Constants.PromotionsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore }).PromotionsList;
         }
 
         /// <summary>
@@ -47,8 +47,13 @@ namespace PromotionEngine.BusinessLayer
         /// <param name="savePromotionData">The save Promotion data.</param>
         public void SavePromotion(Promotion savePromotionData)
         {
-            var existingPromotions = JsonConvert.DeserializeObject<ICollection<Promotion>>(this.documentProvider.JonsFileReader(Constants.ProductsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore });
-            existingPromotions.Add(savePromotionData);
+            if (ValidatePromotionIds(savePromotionData.PromotionID.ToString()))
+            {
+                var existingPromotions = JsonConvert.DeserializeObject<Promotions>(this.documentProvider.JonsFileReader(Constants.PromotionsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore }).PromotionsList;
+                existingPromotions.Add(savePromotionData);
+                string myJsonString = "{ 'PromotionsList': " + JsonConvert.SerializeObject(existingPromotions) + "}";
+                this.documentProvider.JonsFileWriter(Constants.PromotionsDataFile, myJsonString);
+            }
         }
 
         /// <summary>
@@ -57,8 +62,13 @@ namespace PromotionEngine.BusinessLayer
         /// <param name="savePromotionData">The save Promotion data.</param>
         public void SavePromotions(ICollection<Promotion> savePromotionData)
         {
-            var existingPromotions = JsonConvert.DeserializeObject<ICollection<Promotion>>(this.documentProvider.JonsFileReader(Constants.ProductsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore });
-            existingPromotions.ToList().AddRange(savePromotionData);
+            if (ValidatePromotionIds(string.Join(",", savePromotionData.Select(x => x.PromotionID.ToString()).ToArray())))
+            {
+                var existingPromotions = JsonConvert.DeserializeObject<Promotions>(this.documentProvider.JonsFileReader(Constants.PromotionsDataFile), new JsonSerializerSettings { Formatting = Formatting.Indented, MissingMemberHandling = MissingMemberHandling.Ignore }).PromotionsList;
+                existingPromotions.ToList().AddRange(savePromotionData);
+                string myJsonString = "{ 'PromotionsList': " + JsonConvert.SerializeObject(existingPromotions) + "}";
+                this.documentProvider.JonsFileWriter(Constants.PromotionsDataFile, myJsonString);
+            }
         }
 
         /// <summary>
