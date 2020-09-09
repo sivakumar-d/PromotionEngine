@@ -62,8 +62,6 @@ namespace PromotionEngine.BusinessLayer
                 if (appliedPromotion)
                 {
                     var minCount = resultGroup.Where(x => promotionItem.ProductInfo.Any(y => x.Key == y.Key)).OrderBy(x => x.Value).FirstOrDefault().Value;
-
-
                     foreach (var item in resultGroup)
                     {
                         var totalItems = item.Value;
